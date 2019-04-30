@@ -33,17 +33,17 @@ public class HiveSimple2 {
 
         if (System.getProperty("os.name").toLowerCase().startsWith("win")) {
             // 默认：这里不设置的话，win默认会到 C盘下读取krb5.init
-            System.setProperty("java.security.krb5.conf", "D:/TERADATA/20181211-PICCL/70-Dev/async-hive/krb5.conf");
+            System.setProperty("java.security.krb5.conf", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/krb5.conf");
         } // linux 会默认到 /etc/krb5.conf 中读取krb5.conf,本文笔者已将该文件放到/etc/目录下，因而这里便不用再设置了
         try {
             UserGroupInformation.setConfiguration(conf);
 //            UserGroupInformation.loginUserFromKeytab("test2/hdp39@BMSOFT.COM", "./conf/test2.keytab");
-            UserGroupInformation.loginUserFromKeytab("hive/bdp02@PICC.COM", "D:/TERADATA/20181211-PICCL/70-Dev/async-hive/metadata.keytab");
+            UserGroupInformation.loginUserFromKeytab("metadata@PICC.COM", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/metadata.keytab");
         } catch (IOException e1) {
             e1.printStackTrace();
         }
         Class.forName(driverName);
-        Connection conn = DriverManager.getConnection(url,"kinit","metadata");
+        Connection conn = DriverManager.getConnection(url);
         return conn;
     }
 
@@ -162,10 +162,10 @@ public class HiveSimple2 {
             String tableName = "db_metadata.tab_name";
             show_tables(stmt);
             // describ_table(stmt, tableName);
-            /** 删除表 **/
-            // drop_table(stmt, tableName);
-             show_tables(stmt);
-            // queryData(stmt, tableName);
+//            /** 删除表 **/
+//             drop_table(stmt, tableName);
+//             show_tables(stmt);
+//             queryData(stmt, tableName);
 //            createTable(stmt, tableName);
             conn.close();
         } catch (Exception e) {
