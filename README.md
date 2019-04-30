@@ -1,0 +1,1 @@
+# hive-kerberos-jdbc
