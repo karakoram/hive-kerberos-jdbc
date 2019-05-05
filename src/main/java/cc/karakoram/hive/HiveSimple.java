@@ -1,49 +1,48 @@
 package cc.karakoram.hive;
 
 import org.apache.hadoop.security.UserGroupInformation;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+
+import java.sql.*;
 
 /**
  * 简单的jdbc连接hive实例（已开启kerberos服务)
  */
+public class HiveSimple {
 
-public class HiveSimple2 {
     /**
-     * 用于连接Hive所需的一些参数设置 driverName:用于连接hive的JDBC驱动名 When connecting to
-     * HiveServer2 with Kerberos authentication, the URL format is:
-     * jdbc:hive2://<host>:<port>/<db>;principal=
-     * <Server_Principal_of_HiveServer2>
+     * 用于连接Hive所需的一些参数设置 driverName:用于连接hive的JDBC驱动名
+     * When connecting to HiveServer2 with Kerberos authentication, the URL format is:
+     * jdbc:hive2://<host>:<port>/<db>;principal=<Server_Principal_of_HiveServer2>
      */
     private static String driverName = "org.apache.hive.jdbc.HiveDriver";
     // 注意：这里的principal是固定不变的，其指的hive服务所对应的principal,而不是用户所对应的principal
-//    private static String url = "jdbc:hive2://bigdata40:10000/admin;principal=hive/bigdata40@BIGDATA.COM";
-    private static String url = "jdbc:hive2://10.127.60.2:10000/default;principal=hive/bdp02@PICC.COM";
+//    private static String url = "jdbc:hive2://bdp02:10000/default;principal=hive/bdp02@PICC.COM";
+    private static String url = "jdbc:hive2://bdp02:10000/ods;principal=hive/bdp02@PICC.COM";
     private static String sql = "";
     private static ResultSet res;
 
-    public static Connection get_conn() throws SQLException, ClassNotFoundException {
-        /** 使用Hadoop安全登录 **/
-        org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
-        conf.set("hadoop.security.authentication", "Kerberos");
-
-        if (System.getProperty("os.name").toLowerCase().startsWith("win")) {
-            // 默认：这里不设置的话，win默认会到 C盘下读取krb5.init
-            System.setProperty("java.security.krb5.conf", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/krb5.conf");
-        } // linux 会默认到 /etc/krb5.conf 中读取krb5.conf,本文笔者已将该文件放到/etc/目录下，因而这里便不用再设置了
+    public static Connection newInstance() {
+        Connection conn = null;
         try {
+            //登录Kerberos账号
+            org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
+            conf.set("hadoop.security.authentication", "Kerberos");
+
+            // linux 会默认到 /etc/krb5.conf 中读取krb5.conf,这里已将该文件放到/etc/目录下，因而这里便不用再设置了
+            if (System.getProperty("os.name").toLowerCase().startsWith("win")) {
+                // 默认：这里不设置的话，win默认会到 C盘下读取krb5.init
+//                System.setProperty("sun.security.krb5.debug", "true");
+                System.setProperty("java.security.krb5.conf", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/krb5.conf");
+            }
+
             UserGroupInformation.setConfiguration(conf);
-//            UserGroupInformation.loginUserFromKeytab("test2/hdp39@BMSOFT.COM", "./conf/test2.keytab");
             UserGroupInformation.loginUserFromKeytab("metadata@PICC.COM", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/metadata.keytab");
-        } catch (IOException e1) {
+            Class.forName(driverName);
+            conn = DriverManager.getConnection(url);
+        } catch (Exception e1) {
             e1.printStackTrace();
         }
-        Class.forName(driverName);
-        Connection conn = DriverManager.getConnection(url);
+
         return conn;
     }
 
@@ -53,7 +52,7 @@ public class HiveSimple2 {
      * @param statement
      * @return
      */
-    public static boolean show_tables(Statement statement) {
+    public static boolean showTables(Statement statement) {
         sql = "SHOW TABLES";
         System.out.println("Running:" + sql);
         try {
@@ -76,7 +75,7 @@ public class HiveSimple2 {
      * @param tableName
      * @return
      */
-    public static boolean describ_table(Statement statement, String tableName) {
+    public static boolean describeTable(Statement statement, String tableName) {
         sql = "DESCRIBE " + tableName;
         try {
             res = statement.executeQuery(sql);
@@ -98,7 +97,7 @@ public class HiveSimple2 {
      * @param tableName
      * @return
      */
-    public static boolean drop_table(Statement statement, String tableName) {
+    public static boolean dropTable(Statement statement, String tableName) {
         sql = "DROP TABLE IF EXISTS " + tableName;
         System.out.println("Running:" + sql);
         try {
@@ -155,22 +154,27 @@ public class HiveSimple2 {
 
     public static void main(String[] args) {
 
+        Connection conn = null;
         try {
-            Connection conn = get_conn();
+            conn = newInstance();
             Statement stmt = conn.createStatement();
-            // 创建的表名
-            String tableName = "db_metadata.tab_name";
-            show_tables(stmt);
-            // describ_table(stmt, tableName);
-//            /** 删除表 **/
-//             drop_table(stmt, tableName);
-//             show_tables(stmt);
-//             queryData(stmt, tableName);
-//            createTable(stmt, tableName);
-            conn.close();
+            // 表名
+            String tableName = "ods.t_user";
+            showTables(stmt);
+//            describeTable(stmt, tableName);
+
+
+
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
+            try {
+                if (conn != null) {
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
             System.out.println("!!!!!!END!!!!!!!!");
         }
     }
