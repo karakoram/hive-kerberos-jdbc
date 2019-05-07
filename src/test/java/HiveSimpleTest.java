@@ -1,5 +1,5 @@
-package cc.karakoram.hive;
-
+import cc.karakoram.hive.HiveJdbc4Kerberos;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 
 import java.sql.*;
@@ -7,7 +7,7 @@ import java.sql.*;
 /**
  * 简单的jdbc连接hive实例（已开启kerberos服务)
  */
-public class HiveSimple {
+public class HiveSimpleTest {
 
     /**
      * 用于连接Hive所需的一些参数设置 driverName:用于连接hive的JDBC驱动名
@@ -21,22 +21,26 @@ public class HiveSimple {
     private static String sql = "";
     private static ResultSet res;
 
+    static String kerberosUser = "metadata@PICC.COM";
+    static String krb5ConfPath = "D:/TERADATA/20181211-PICCL/99-Source/hive-kerberos-conf/krb5.conf";
+    static String keytabPath = "D:/TERADATA/20181211-PICCL/99-Source/hive-kerberos-conf/metadata.keytab";
+
     public static Connection newInstance() {
         Connection conn = null;
         try {
             //登录Kerberos账号
-            org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
+            Configuration conf = new Configuration();
             conf.set("hadoop.security.authentication", "Kerberos");
 
             // linux 会默认到 /etc/krb5.conf 中读取krb5.conf,这里已将该文件放到/etc/目录下，因而这里便不用再设置了
             if (System.getProperty("os.name").toLowerCase().startsWith("win")) {
                 // 默认：这里不设置的话，win默认会到 C盘下读取krb5.init
 //                System.setProperty("sun.security.krb5.debug", "true");
-                System.setProperty("java.security.krb5.conf", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/krb5.conf");
+                System.setProperty("java.security.krb5.conf", krb5ConfPath);
             }
 
             UserGroupInformation.setConfiguration(conf);
-            UserGroupInformation.loginUserFromKeytab("metadata@PICC.COM", "D:/TERADATA/20181211-PICCL/70-Dev/hive-kerberos-conf/metadata.keytab");
+            UserGroupInformation.loginUserFromKeytab(kerberosUser, keytabPath);
             Class.forName(driverName);
             conn = DriverManager.getConnection(url);
         } catch (Exception e1) {
@@ -157,6 +161,7 @@ public class HiveSimple {
         Connection conn = null;
         try {
             conn = newInstance();
+            conn = HiveJdbc4Kerberos.newInstance(kerberosUser, krb5ConfPath, keytabPath, driverName, url);
             Statement stmt = conn.createStatement();
             // 表名
             String tableName = "ods.t_user";
